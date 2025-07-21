@@ -2,17 +2,18 @@ use std::{collections::HashMap, sync::Arc};
 
 use crossterm::style::StyledContent;
 
-use padding::PadLeft;
-
-use crate::{buf::LogBuffer, color::Color};
-
+mod buf;
 mod builder;
+pub mod color;
+pub mod padding;
+pub mod program_name;
+
+pub use buf::LogBuffer;
+use color::Color;
+use padding::PadLeft;
+use program_name::ProgramName;
+
 pub use builder::Builder as LogBuilder;
-
-mod program_name;
-pub use program_name::ProgramName;
-
-type S = &'static str;
 
 pub const DEFAULT_LEVELS: [Color; 4] = [
     Color::Blue("INFO"),
@@ -32,8 +33,8 @@ pub struct Log {
 impl<'b> Log {
     pub fn new<I1, I2>(buffer: impl LogBuffer, submodule_names: I1, levels: I2) -> Arc<Self>
     where
-        I1: IntoIterator<Item = S>,
-        I2: IntoIterator<Item = (S, StyledContent<S>)> + Clone,
+        I1: IntoIterator<Item = &'static str>,
+        I2: IntoIterator<Item = (&'static str, StyledContent<&'static str>)> + Clone,
     {
         let level_names = levels.clone().into_iter().map(|(s, _)| s);
 
@@ -253,154 +254,5 @@ pub trait Loggable: Sized {
 impl<T: ToString> Loggable for T {
     fn as_loggable(&self) -> String {
         self.to_string()
-    }
-}
-
-pub mod color {
-    use crossterm::style::{self, StyledContent, Stylize, style};
-
-    pub trait GetColor: 'static {
-        fn get_colored_str(&self) -> StyledContent<&'static str>;
-        fn get_inner_str(&self) -> &'static str;
-    }
-
-    #[derive(Clone)]
-    pub enum Color {
-        Red(&'static str),
-        Green(&'static str),
-        Blue(&'static str),
-        Cyan(&'static str),
-        Yellow(&'static str),
-        Magenta(&'static str),
-    }
-
-    impl GetColor for &'static str {
-        fn get_colored_str(&self) -> StyledContent<&'static str> {
-            style(*self)
-        }
-
-        fn get_inner_str(&self) -> &'static str {
-            self
-        }
-    }
-
-    impl GetColor for Color {
-        fn get_colored_str(&self) -> StyledContent<&'static str> {
-            match self {
-                Color::Red(s) => style(*s).with(style::Color::Red),
-                Color::Green(s) => style(*s).with(style::Color::Green),
-                Color::Blue(s) => style(*s).with(style::Color::Blue),
-                Color::Cyan(s) => style(*s).with(style::Color::Cyan),
-                Color::Yellow(s) => style(*s).with(style::Color::Yellow),
-                Color::Magenta(s) => style(*s).with(style::Color::Magenta),
-            }
-        }
-
-        fn get_inner_str(&self) -> &'static str {
-            match self {
-                Color::Red(s) => s,
-                Color::Green(s) => s,
-                Color::Blue(s) => s,
-                Color::Cyan(s) => s,
-                Color::Yellow(s) => s,
-                Color::Magenta(s) => s,
-            }
-        }
-    }
-}
-
-mod padding {
-    use std::collections::HashMap;
-
-    pub struct PadLeft<'a> {
-        pub width: u8,
-        pub map: HashMap<&'a str, u8>,
-    }
-
-    impl<'a> PadLeft<'a> {
-        pub fn new<T>(iterable: T) -> Self
-        where
-            T: IntoIterator<Item = S<'a>>,
-        {
-            let (width, map) = to_pad_map_left(iterable);
-            Self { width, map }
-        }
-
-        pub fn get(&self, k: &'a str) -> String {
-            let (padding, key) = self.get_split(k);
-            format!("{padding}{key}")
-        }
-
-        /// Get per key. If None, compute padding per widest known key
-        pub fn get_split(&self, k: &'a str) -> (String, &'a str) {
-            match self.map.get(k) {
-                Some(n) => {
-                    let padding = " ".repeat((*n).into());
-                    (padding, k)
-                }
-                None => {
-                    let letters_count = k.chars().count() as u8;
-
-                    if letters_count < self.width {
-                        let n = self.width - letters_count;
-                        let s = " ".repeat(n.into());
-                        (s, k)
-                    } else {
-                        (String::new(), k)
-                    }
-                }
-            }
-        }
-    }
-
-    type S<'a> = &'a str;
-
-    /// v is k with left padding.
-    /// Padding amount is the number of letters in the longest k letter-wise.
-    fn to_pad_map_left<'a, T>(iterable: T) -> (u8, HashMap<&'a str, u8>)
-    where
-        T: IntoIterator<Item = S<'a>>,
-    {
-        let map: HashMap<&'a str, u8> = iterable
-            .into_iter()
-            .map(|s| {
-                let letters_count = s.chars().count() as u8;
-
-                (s, letters_count)
-            })
-            .collect();
-
-        let mut widest = 0;
-        for letters_count in map.values() {
-            if widest < *letters_count {
-                widest = *letters_count;
-            }
-        }
-
-        // Set the padding that each one needs
-        let pad_map = map
-            .into_iter()
-            .map(|(k, v)| {
-                let needed_padding = widest - v;
-                (k, needed_padding)
-            })
-            .collect();
-
-        (widest, pad_map)
-    }
-
-    #[test]
-    fn default_to_pad_map_left() {
-        const DEFAULT_LEVELS: [&str; 2] = ["INFO", "ERROR"];
-
-        let mut v = to_pad_map_left(DEFAULT_LEVELS)
-            .1
-            .into_iter()
-            .collect::<Vec<(&str, u8)>>();
-        v.sort_by(|(a, _), (b, _)| a.cmp(b));
-
-        let expected = vec![("ERROR", 0), ("INFO", 1)];
-
-        assert_eq!(v, expected);
     }
 }

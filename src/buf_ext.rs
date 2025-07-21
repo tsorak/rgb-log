@@ -1,18 +1,11 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use crate::log::LogBuffer;
+
 pub use in_memory::InMemory;
 pub use on_disk::OnDisk;
 pub use smart::Smart;
-
-pub trait LogBuffer: 'static + Send + Sync {
-    //async fn push_line<S: Sized + AsRef<str> + ToString + Send>(&self, line: S);
-    fn push_line(&self, line: String);
-}
-
-impl LogBuffer for Option<()> {
-    fn push_line(&self, _line: String) {}
-}
 
 mod on_disk {
     use super::*;

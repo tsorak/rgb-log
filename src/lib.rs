@@ -1,6 +1,8 @@
-pub mod buf;
+#[cfg(feature = "buf-ext")]
+pub mod buf_ext;
+
 pub mod log;
-pub use log::{Log, color};
+pub use log::Log;
 
 #[macro_export]
 macro_rules! info {

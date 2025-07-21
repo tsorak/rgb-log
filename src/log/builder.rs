@@ -2,11 +2,7 @@ use std::sync::Arc;
 
 use crossterm::style::StyledContent;
 
-use crate::{
-    buf::LogBuffer,
-    color::GetColor,
-    log::{DEFAULT_LEVELS, PadLeft, program_name::ProgramName},
-};
+use crate::log::{DEFAULT_LEVELS, LogBuffer, PadLeft, color::GetColor, program_name::ProgramName};
 
 #[derive(Default)]
 pub struct Builder {
@@ -44,7 +40,7 @@ impl Builder {
     }
 
     pub fn build(self) -> Arc<super::Log> {
-        let bfr = self.buffer.unwrap_or(Box::new(None));
+        let buf = self.buffer.unwrap_or(Box::new(None));
         let program_name = self
             .program_name
             .unwrap_or(ProgramName::CrateName)
@@ -61,7 +57,7 @@ impl Builder {
                     .collect()
             };
 
-        super::Log::new_raw(bfr, program_name, submodule_names, levels)
+        super::Log::new_raw(buf, program_name, submodule_names, levels)
     }
 }
 

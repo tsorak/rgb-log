@@ -4,24 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-crossterm = "0.28.1"
-tokio = { version = "1", features = [
-    "sync",
-    "io-std",
-    "io-util",
-    "fs",
-    "rt",
-    "time",
-    "macros",
-] }
+crossterm = { version = "0.28.1", default-features = false }
+tokio = { version = "1", default-features = false, optional = true }
 chrono = { version = "0.4.41", features = ["serde"], optional = true }
 
 [lib]
 path = "./src/lib.rs"
 
 [features]
-# use this if this package ever goes standalone from a workspace
-default = ["chrono", "seconds"]
+default = []
 # default = []
 chrono = ["dep:chrono"]
 seconds = ["chrono"]
@@ -29,3 +20,12 @@ milliseconds = ["chrono"]
 # Includes a T in the middle and a Z at the end of the timestamp,
 # not fancy but nice for parsing output
 rfc = ["chrono"]
+# Provides different ways to store lines output by Log
+buf-ext = [
+    "tokio/sync",
+    "tokio/rt",
+    "tokio/fs",
+    "tokio/io-util",
+    "tokio/time",
+    "tokio/macros",
+]
