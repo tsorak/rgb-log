@@ -9,6 +9,9 @@ use crate::{buf::LogBuffer, color::Color};
 mod builder;
 pub use builder::Builder as LogBuilder;
 
+mod program_name;
+pub use program_name::ProgramName;
+
 type S = &'static str;
 
 pub const DEFAULT_LEVELS: [Color; 4] = [
@@ -20,6 +23,7 @@ pub const DEFAULT_LEVELS: [Color; 4] = [
 
 pub struct Log {
     buf: Box<dyn LogBuffer>,
+    program_name: Option<String>,
     submodule_pad: PadLeft<'static>,
     level_pad: PadLeft<'static>,
     level_color: HashMap<&'static str, StyledContent<&'static str>>,
@@ -35,6 +39,7 @@ impl<'b> Log {
 
         Self {
             buf: Box::new(buffer),
+            program_name: ProgramName::CrateName.try_to_string(),
             submodule_pad: PadLeft::new(submodule_names),
             level_pad: PadLeft::new(level_names),
             level_color: levels.into_iter().collect(),
@@ -181,13 +186,25 @@ impl<'a, 'b, L: Loggable> Print<'a, 'b, L> {
 
     #[allow(unreachable_code)]
     fn get_line(&self) -> String {
-        let program_and_modpart = match self.submod {
-            Some(submod) => {
-                format!("[V4DL {}]", self.log.submodule_pad.get(submod))
+        let program_and_modpart = if let Some(ref program) = self.log.program_name {
+            match self.submod {
+                Some(submod) => {
+                    format!("[{program} {}]", self.log.submodule_pad.get(submod))
+                }
+                None => {
+                    let spacing = " ".repeat(self.log.submodule_pad.width.into());
+                    format!("[{program}] {spacing}")
+                }
             }
-            None => {
-                let spacing = " ".repeat(self.log.submodule_pad.width.into());
-                format!("[V4DL] {spacing}")
+        } else {
+            match self.submod {
+                Some(submod) => {
+                    format!("[{}]", self.log.submodule_pad.get(submod))
+                }
+                None => {
+                    let spacing = " ".repeat(self.log.submodule_pad.width.into());
+                    format!("{spacing}")
+                }
             }
         };
 

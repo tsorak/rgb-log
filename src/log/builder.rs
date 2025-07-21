@@ -5,12 +5,13 @@ use crossterm::style::StyledContent;
 use crate::{
     buf::LogBuffer,
     color::GetColor,
-    log::{DEFAULT_LEVELS, PadLeft},
+    log::{DEFAULT_LEVELS, PadLeft, program_name::ProgramName},
 };
 
 #[derive(Default)]
 pub struct Builder {
     buffer: Option<Box<dyn LogBuffer>>,
+    program_name: Option<ProgramName>,
     submodule_names: Option<Box<dyn Iterator<Item = &'static str>>>,
     levels: Option<Box<dyn Iterator<Item = Box<dyn GetColor>>>>,
 }
@@ -18,6 +19,11 @@ pub struct Builder {
 impl Builder {
     pub fn with_buffer(mut self, bfr: impl LogBuffer) -> Self {
         let _ = self.buffer.insert(Box::new(bfr));
+        self
+    }
+
+    pub fn with_program_name(mut self, v: impl Into<ProgramName>) -> Self {
+        let _ = self.program_name.insert(v.into());
         self
     }
 
@@ -39,6 +45,10 @@ impl Builder {
 
     pub fn build(self) -> Arc<super::Log> {
         let bfr = self.buffer.unwrap_or(Box::new(None));
+        let program_name = self
+            .program_name
+            .unwrap_or(ProgramName::CrateName)
+            .try_to_string();
         let submodule_names = self.submodule_names.unwrap_or(Box::new([].into_iter()));
         let levels: Vec<(&'static str, StyledContent<&'static str>)> =
             if let Some(iter) = self.levels {
@@ -51,12 +61,17 @@ impl Builder {
                     .collect()
             };
 
-        super::Log::new_raw(bfr, submodule_names, levels)
+        super::Log::new_raw(bfr, program_name, submodule_names, levels)
     }
 }
 
 impl super::Log {
-    pub fn new_raw<I1, I2>(buffer: Box<dyn LogBuffer>, submodule_names: I1, levels: I2) -> Arc<Self>
+    fn new_raw<I1, I2>(
+        buf: Box<dyn LogBuffer>,
+        program_name: Option<String>,
+        submodule_names: I1,
+        levels: I2,
+    ) -> Arc<Self>
     where
         I1: IntoIterator<Item = &'static str>,
         I2: IntoIterator<Item = (&'static str, StyledContent<&'static str>)> + Clone,
@@ -64,7 +79,8 @@ impl super::Log {
         let level_names = levels.clone().into_iter().map(|(s, _)| s);
 
         Self {
-            buf: buffer,
+            buf,
+            program_name,
             submodule_pad: PadLeft::new(submodule_names),
             level_pad: PadLeft::new(level_names),
             level_color: levels.into_iter().collect(),
