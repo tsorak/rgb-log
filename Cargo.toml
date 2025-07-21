@@ -1,5 +1,5 @@
 [package]
-name = "rgb_log"
+name = "rgb-log"
 version = "0.1.0"
 edition = "2024"
 
@@ -13,9 +13,11 @@ path = "./src/lib.rs"
 
 [features]
 # use this if this package ever goes standalone from a workspace
-default = ["chrono", "rfc", "seconds"]
+default = ["chrono", "seconds"]
 # default = []
 chrono = ["dep:chrono"]
 seconds = ["chrono"]
 milliseconds = ["chrono"]
+# Includes a T in the middle and a Z at the end of the timestamp,
+# not fancy but nice for parsing output
 rfc = ["chrono"]
