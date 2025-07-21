@@ -1,0 +1,21 @@
+[package]
+name = "rgb_log"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+crossterm = "0.28.1"
+tokio = { version = "1.46.1", features = ["full"] }
+chrono = { version = "0.4.41", features = ["serde"], optional = true }
+
+[lib]
+path = "./src/lib.rs"
+
+[features]
+# use this if this package ever goes standalone from a workspace
+default = ["chrono", "rfc", "seconds"]
+# default = []
+chrono = ["dep:chrono"]
+seconds = ["chrono"]
+milliseconds = ["chrono"]
+rfc = ["chrono"]
