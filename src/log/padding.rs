@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+#[derive(Default)]
 pub struct PadLeft<'a> {
     pub width: u8,
     pub map: HashMap<&'a str, u8>,
@@ -14,6 +15,8 @@ impl<'a> PadLeft<'a> {
         Self { width, map }
     }
 
+    /// Returns a string which has enough whitespace padding to the left
+    /// in order to align with the widest one present in map
     pub fn get(&self, k: &'a str) -> String {
         let (padding, key) = self.get_split(k);
         format!("{padding}{key}")
@@ -47,7 +50,7 @@ fn to_pad_map_left<'a, T>(iterable: T) -> (u8, HashMap<&'a str, u8>)
 where
     T: IntoIterator<Item = &'a str>,
 {
-    let map: HashMap<&'a str, u8> = iterable
+    let mut map: HashMap<&'a str, u8> = iterable
         .into_iter()
         .map(|s| {
             let letters_count = s.chars().count() as u8;
@@ -64,15 +67,11 @@ where
     }
 
     // Set the padding that each one needs
-    let pad_map = map
-        .into_iter()
-        .map(|(k, v)| {
-            let needed_padding = widest - v;
-            (k, needed_padding)
-        })
-        .collect();
+    map.iter_mut().for_each(|(_, v)| {
+        *v = widest - *v;
+    });
 
-    (widest, pad_map)
+    (widest, map)
 }
 
 #[test]

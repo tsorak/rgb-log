@@ -8,8 +8,8 @@ use crate::log::{DEFAULT_LEVELS, LogBuffer, PadLeft, color::GetColor, program_na
 pub struct Builder {
     buffer: Option<Box<dyn LogBuffer>>,
     program_name: Option<ProgramName>,
-    submodule_names: Option<Box<dyn Iterator<Item = &'static str>>>,
-    levels: Option<Box<dyn Iterator<Item = Box<dyn GetColor>>>>,
+    submodule_names: Option<PadLeft<'static>>,
+    levels: Option<Vec<(&'static str, StyledContent<&'static str>)>>,
 }
 
 impl Builder {
@@ -23,19 +23,24 @@ impl Builder {
         self
     }
 
-    pub fn with_submodule_names(
-        mut self,
-        iter: impl IntoIterator<Item = &'static str> + 'static,
-    ) -> Self {
-        let _ = self.submodule_names.insert(Box::new(iter.into_iter()));
+    pub fn with_submodule_names<I>(mut self, iter: I) -> Self
+    where
+        I: IntoIterator<Item = &'static str>,
+    {
+        let _ = self.submodule_names.insert(PadLeft::new(iter));
         self
     }
 
-    pub fn with_levels(
-        mut self,
-        iter: impl IntoIterator<Item = Box<dyn GetColor>> + 'static,
-    ) -> Self {
-        let _ = self.levels.insert(Box::new(iter.into_iter()));
+    pub fn with_levels<I, T>(mut self, iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        T: GetColor,
+    {
+        let _ = self.levels.insert(
+            iter.into_iter()
+                .map(|v| (v.get_inner_str(), v.get_colored_str()))
+                .collect(),
+        );
         self
     }
 
@@ -45,11 +50,10 @@ impl Builder {
             .program_name
             .unwrap_or(ProgramName::CrateName)
             .try_to_string();
-        let submodule_names = self.submodule_names.unwrap_or(Box::new([].into_iter()));
+        let submodule_names = self.submodule_names.unwrap_or_default();
         let levels: Vec<(&'static str, StyledContent<&'static str>)> =
-            if let Some(iter) = self.levels {
-                iter.map(|v| (v.get_inner_str(), v.get_colored_str()))
-                    .collect()
+            if let Some(vec) = self.levels {
+                vec
             } else {
                 DEFAULT_LEVELS
                     .into_iter()
@@ -62,22 +66,21 @@ impl Builder {
 }
 
 impl super::Log {
-    fn new_raw<I1, I2>(
+    fn new_raw<I>(
         buf: Box<dyn LogBuffer>,
         program_name: Option<String>,
-        submodule_names: I1,
-        levels: I2,
+        submodule_pad: PadLeft<'static>,
+        levels: I,
     ) -> Arc<Self>
     where
-        I1: IntoIterator<Item = &'static str>,
-        I2: IntoIterator<Item = (&'static str, StyledContent<&'static str>)> + Clone,
+        I: IntoIterator<Item = (&'static str, StyledContent<&'static str>)> + Clone,
     {
         let level_names = levels.clone().into_iter().map(|(s, _)| s);
 
         Self {
             buf,
             program_name,
-            submodule_pad: PadLeft::new(submodule_names),
+            submodule_pad,
             level_pad: PadLeft::new(level_names),
             level_color: levels.into_iter().collect(),
         }

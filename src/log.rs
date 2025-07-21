@@ -31,21 +31,13 @@ pub struct Log {
 }
 
 impl<'b> Log {
-    pub fn new<I1, I2>(buffer: impl LogBuffer, submodule_names: I1, levels: I2) -> Arc<Self>
-    where
-        I1: IntoIterator<Item = &'static str>,
-        I2: IntoIterator<Item = (&'static str, StyledContent<&'static str>)> + Clone,
-    {
-        let level_names = levels.clone().into_iter().map(|(s, _)| s);
-
-        Self {
-            buf: Box::new(buffer),
-            program_name: ProgramName::CrateName.try_to_string(),
-            submodule_pad: PadLeft::new(submodule_names),
-            level_pad: PadLeft::new(level_names),
-            level_color: levels.into_iter().collect(),
-        }
-        .into()
+    pub fn new() -> Arc<Self> {
+        Self::builder()
+            .with_buffer(None)
+            .with_program_name(ProgramName::CrateName)
+            .with_submodule_names([])
+            .with_levels(DEFAULT_LEVELS)
+            .build()
     }
 
     pub fn submodule(self: &Arc<Self>, name: &'static str) -> SubmoduleLog {
